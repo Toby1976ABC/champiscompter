@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EDF0E9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161A16" media="(prefers-color-scheme: dark)">
+<title>ChampisCompter — Cabane &amp; Cie</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ChampisCompter">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="Comptage des meules de champignons par photo, prévision de cueille et main d'œuvre — Cabane & Cie">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{
+  --paper:#EDF0E9; --paper2:#E3E7DE; --ink:#1B211B; --ink2:#4A544A; --rule:#C6CDBF;
+  --acc:#2B6A68; --alert:#A6412D; --band:#8CA277; --warn:#96660F;
+  --serif: Georgia,'Iowan Old Style','Palatino Linotype',serif;
+  --sans: system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#161A16; --paper2:#20261F; --ink:#E4E9DF; --ink2:#A7B1A3; --rule:#36402F;
+  --acc:#6FB5B1; --alert:#E07D64; --band:#A4BC8C; --warn:#D7A64E; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#161A16; --paper2:#20261F; --ink:#E4E9DF; --ink2:#A7B1A3; --rule:#36402F;
+  --acc:#6FB5B1; --alert:#E07D64; --band:#A4BC8C; --warn:#D7A64E; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.62}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:1120px;margin:0 auto;padding:0 max(28px,env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(28px,env(safe-area-inset-left))}
+.titre{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.titre h1{margin-bottom:.3em}
+button.theme{flex:none;font-size:1.05rem;line-height:1;padding:9px 12px;margin-top:.5rem}
+
+h1,h2{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;line-height:1.18}
+h1{font-size:clamp(2.1rem,5vw,3.1rem);margin:0 0 .3em}
+h2{font-size:clamp(1.2rem,2.2vw,1.6rem);margin:0 0 .5rem}
+h2 .num{font-family:var(--serif);color:var(--band);font-size:1.5em;line-height:1;
+  margin-right:.32em;vertical-align:-.04em}
+h3{font-family:var(--sans);font-weight:650;font-size:1rem;margin:1.6rem 0 .4rem}
+p{margin:0 0 1.05em;max-width:74ch}
+strong,b{font-weight:650}
+
+.masthead{border-bottom:1.5px solid var(--ink);padding:40px 0 20px;margin-bottom:6px}
+.kicker{font-family:var(--serif);font-style:italic;color:var(--ink2);font-size:1.02rem;margin:0 0 .9rem}
+.lede{font-size:1.1rem;max-width:64ch;margin-bottom:.9rem}
+.meta{font-size:.82rem;color:var(--ink2);line-height:1.7;max-width:78ch;margin:0}
+.meta code{background:var(--paper2);padding:1px 5px;border-radius:2px;font-size:.92em}
+
+/* onglets et boutons, registre maison */
+nav.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:14px 0 12px;border-bottom:1px solid var(--rule);
+  position:sticky;top:0;z-index:5;background:var(--paper)}
+nav.tabs button{font:inherit;font-size:.86rem;padding:6px 14px;border:1px solid var(--rule);
+  background:transparent;color:var(--ink2);border-radius:2px;cursor:pointer}
+nav.tabs button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+button.go{font:inherit;font-size:1rem;font-weight:650;width:100%;padding:13px;
+  background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:2px;cursor:pointer}
+button.go[disabled]{opacity:.35;cursor:not-allowed}
+button.win{font:inherit;font-size:.86rem;padding:7px 14px;border:1px solid var(--rule);
+  background:transparent;color:var(--ink2);border-radius:2px;cursor:pointer}
+button.win[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+button.win:focus-visible,nav.tabs button:focus-visible,button.go:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+section.sect{padding:26px 0 4px;border-top:1px solid var(--rule)}
+section.sect:first-of-type{border-top:0}
+.pane>section.sect:first-child{border-top:0;padding-top:20px}
+
+/* formulaires */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 18px;margin:.6rem 0 1rem}
+label{display:block;font-size:.78rem;color:var(--ink2);margin-bottom:3px;font-weight:650;
+  letter-spacing:.02em}
+select,input[type=text],input[type=number],input[type=date],textarea{
+  width:100%;padding:8px 9px;font:inherit;font-size:.95rem;background:var(--paper2);
+  color:var(--ink);border:1px solid var(--rule);border-radius:2px}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:1px}
+textarea{line-height:1.5;resize:vertical}
+input[type=file]{font-size:.85rem;width:100%;color:var(--ink2);padding:6px 0}
+input[type=file]::file-selector-button{font:inherit;font-weight:650;font-size:.95rem;padding:11px 16px;margin-right:12px;
+  min-height:44px;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:2px;cursor:pointer}
+
+/* chiffres de tête, façon deltas */
+.deltas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin:14px 0 18px}
+.deltas div{padding:16px 18px 14px;border-left:1px solid var(--rule)}
+.deltas div:first-child{border-left:0;padding-left:0}
+.dnum{font-family:var(--serif);font-size:2.1rem;line-height:1;display:block;margin-bottom:.3em}
+.dlab{font-size:.82rem;color:var(--ink2);line-height:1.4;display:block;max-width:26ch}
+
+/* tableaux */
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:.3rem 0 1.2rem}
+caption{text-align:left;font-size:.84rem;color:var(--ink2);padding-bottom:.6rem}
+th,td{padding:7px 10px;border-bottom:1px solid var(--rule);text-align:right;vertical-align:baseline}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+thead th{border-bottom:1.5px solid var(--ink);font-weight:650;font-size:.82rem}
+td.num,th.num{font-variant-numeric:tabular-nums}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--paper2)}
+.scroll{overflow-x:auto}
+
+/* marqueurs et blocs */
+.sw{display:inline-block;width:9px;height:9px;margin-right:8px;vertical-align:.02em}
+.state{font-weight:650;white-space:nowrap}
+.state::after{content:"";display:inline-block;width:7px;height:7px;margin-left:7px;vertical-align:.1em}
+.state.c::after{background:var(--alert)} .state.w::after{background:var(--warn)} .state.g::after{background:var(--band)}
+.state.c{color:var(--alert)} .state.w{color:var(--warn)} .state.g{color:var(--ink)}
+.callout{background:var(--paper2);padding:16px 20px;margin:0 0 1.2rem;border-radius:2px}
+.callout p:last-child{margin-bottom:0}
+.callout.crit{border-left:3px solid var(--alert)}
+.callout.warn{border-left:3px solid var(--warn)}
+.note{font-size:.86rem;color:var(--ink2);margin:.6rem 0 1rem;max-width:80ch}
+.note b{color:var(--ink)}
+.muted{color:var(--ink2);font-size:.88rem}
+ul.notes{margin:.5rem 0 1rem;padding-left:1.1em;font-size:.9rem;color:var(--ink2)}
+ul.notes li{margin-bottom:.4em;max-width:78ch}
+.stage{border:1px solid var(--rule);background:var(--paper2);overflow:hidden;margin:.4rem 0}
+.stage canvas,.stage img{display:block;width:100%;height:auto;touch-action:manipulation}
+.sep{height:1px;background:var(--rule);margin:1.4rem 0}
+details.fold summary{cursor:pointer;font-family:var(--sans);font-weight:650;font-size:.9rem;
+  color:var(--ink2);padding:4px 0}
+
+/* ---------- maquettes mobiles : logo, barre basse, écran Résultats ---------- */
+.logo{display:flex;justify-content:center;padding:calc(14px + env(safe-area-inset-top)) 0 0}
+.logo img{width:124px;height:75px;object-fit:contain}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo img{filter:brightness(1.35)}}
+:root[data-theme="dark"] .logo img{filter:brightness(1.35)}
+button.theme{width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;color:var(--ink2)}
+nav.tabs svg{display:none}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink);border-radius:2px;margin-top:12px;overflow:hidden}
+.seg button.win{border:0;border-radius:0;min-height:44px;font-size:.9rem}
+.seg button.win[aria-pressed="true"]{font-weight:650}
+.btn-photo{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;
+  background:var(--ink);color:var(--paper);border-radius:2px;font-weight:650;font-size:16px;cursor:pointer;
+  letter-spacing:0;margin:0}
+.btn-photo:focus-within{outline:2px solid var(--acc);outline-offset:2px}
+.btn-photo input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.btn-file{display:flex;align-items:center;justify-content:center;min-height:48px;border:1px dashed var(--ink2);
+  border-radius:2px;font-weight:650;font-size:15px;color:var(--ink);cursor:pointer;margin:0;position:relative}
+.btn-file input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.vide{margin:16px 0 0;padding:28px 16px;background:var(--paper2);border-radius:2px;text-align:center;color:var(--ink2);font-size:14px}
+.vide button{font:inherit;font-weight:650;color:var(--acc);background:none;border:0;min-height:44px;cursor:pointer;text-decoration:underline}
+.reshead{display:flex;align-items:center;gap:10px;padding:14px 0 12px;border-bottom:1.5px solid var(--ink)}
+.reshead h1{font-size:1.6rem;margin:0}
+.reshead .kicker{margin:0;font-size:.85rem}
+button.retour{flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--rule);border-radius:2px;background:transparent;color:var(--ink);cursor:pointer;padding:0}
+.maj{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:20;
+  background:var(--ink);color:var(--paper);padding:12px 14px;border-radius:2px;display:flex;gap:12px;align-items:center;font-size:.9rem}
+.maj button{font:inherit;font-weight:650;background:var(--paper);color:var(--ink);border:0;border-radius:2px;min-height:40px;padding:0 14px;cursor:pointer}
+
+@media (max-width:720px){
+  .wrap{padding:0 max(16px,env(safe-area-inset-right)) calc(72px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  body{font-size:15px}
+  .masthead{padding:22px 0 14px}
+  h1{font-size:2rem}
+  .kicker{font-size:.92rem;margin-bottom:.5rem}
+  .lede{font-size:1rem}
+  .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  /* barre d'onglets basse, façon application */
+  nav.tabs{position:fixed;top:auto;left:0;right:0;bottom:0;margin:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+    padding:8px max(12px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+    border-top:1px solid var(--rule);border-bottom:0;z-index:10}
+  nav.tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    min-height:52px;padding:4px;font-size:12px;font-weight:650;border:0;white-space:nowrap}
+  nav.tabs svg{display:block}
+  .titre h1{font-size:2rem;margin:0}
+  .titre{align-items:center}
+  section.sect{padding:20px 0 2px}
+  .grid{grid-template-columns:1fr 1fr;gap:10px 12px}
+  /* 16 px mini : sinon iOS zoome à chaque saisie */
+  select,input[type=text],input[type=number],input[type=date],textarea{font-size:16px;padding:10px;min-height:44px}
+  input[type=date]{-webkit-appearance:none;appearance:none}
+  button.win{min-height:44px;padding:10px 12px}
+  .ctrls>button.win{flex:1 1 auto}
+  .ctrls>div{flex:1 1 100%!important}
+  .ctrls.col{flex-direction:column;align-items:stretch}
+  .ctrls.col>button.win{min-height:48px;font-size:15px;color:var(--ink)}
+  .ctrls.col>button.win.prim{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:650}
+  .grid .span2{grid-column:span 2}
+  .lede{font-size:15px}
+  .masthead{padding-top:16px}
+  button.go{padding:15px;min-height:52px}
+  .callout{padding:13px 14px}
+  table{font-size:.86rem}
+  #tbl-hist td,#tbl-hist th{white-space:nowrap;padding-left:3px;padding-right:3px}
+  #tbl-hist .state::after{display:none}
+  .deltas{grid-template-columns:1fr 1fr}
+  .deltas div{border-left:1px solid var(--rule);padding:13px 12px}
+  .deltas div:nth-child(2n+1){border-left:0;padding-left:0}
+  .deltas div:nth-child(n+3){border-top:1px solid var(--rule)}
+  .dnum{font-size:1.8rem}
+  th,td{padding:6px 5px;font-size:.84rem}
+  #tbl-classes td:first-child{width:40%}
+  .stage{margin-left:-16px;margin-right:-16px;border-left:0;border-right:0}
+}
+@media (max-width:420px){ #tbl-hist .pos{display:none} }
+@media (max-width:360px){
+  .grid{grid-template-columns:1fr}
+  nav.tabs button{font-size:.78rem}
+}
+@media print{
+  body{background:#fff}
+  nav.tabs,.ctrls,button,input[type=file],.fold{display:none!important}
+  :root{--paper:#fff;--paper2:#f3f3f0;--ink:#111;--ink2:#444;--rule:#ccc}
+  .sect{break-inside:avoid;border-top:1px solid #ccc}
+  .masthead{padding-top:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="logo"><img src="icons/logo.png" alt="Cabane &amp; Cie" width="124" height="75"></div>
+<header class="masthead" id="masthead">
+  <div class="titre"><h1>ChampisCompter</h1>
+    <button class="win theme" id="btn-theme" type="button" title="Clair / sombre" aria-label="Basculer clair / sombre"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></svg></button></div>
+  <p class="lede">Une photo, deux repères d'échelle&nbsp;: le champi est compté par classe de calibre, la charge est située, et la cueille est projetée jour par jour.</p>
+  <p class="meta" id="etat">—</p>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Onglets">
+  <button id="tab-new"  role="tab" aria-selected="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.6"/></svg>Relevé</button>
+  <button id="tab-hist" role="tab" aria-selected="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Historique</button>
+  <button id="tab-cfg"  role="tab" aria-selected="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Réglages</button>
+</nav>
+<div class="maj" id="maj" hidden><span style="flex:1">Nouvelle version de l'application disponible.</span><button type="button" id="btn-maj">Mettre à jour</button></div>
+
+<!-- ================= NOUVEAU RELEVÉ ================= -->
+<div class="pane" id="pane-new">
+ <div id="saisie">
+  <section class="sect">
+    <h2><span class="num">1</span>Le relevé</h2>
+    <div class="grid">
+      <div><label for="f-date">Date</label><input type="date" id="f-date"></div>
+      <div><label for="f-salle">Salle</label><select id="f-salle"></select></div>
+      <div><label for="f-volet">Étagère</label><select id="f-volet"></select></div>
+      <div><label for="f-pos">Position</label><select id="f-pos"></select></div>
+      <div><label for="f-volee">Volée</label><select id="f-volee">
+        <option>1</option><option>2</option><option>3</option></select></div>
+      <div><label for="f-souche">Souche</label><select id="f-souche">
+        <option>blanc</option><option>brun</option></select></div>
+      <div class="span2"><label for="f-op">Relevé par</label><input type="text" id="f-op" placeholder="nom"></div>
+      <div><label for="f-tc">T° compost (°C)</label><input type="number" id="f-tc" step="0.1" inputmode="decimal" placeholder="ex. 21,0"></div>
+      <div><label for="f-ta">T° air (°C)</label><input type="number" id="f-ta" step="0.1" inputmode="decimal" placeholder="ex. 17,0"></div>
+    </div>
+    <p class="note">Les deux températures ne sont pas décoratives&nbsp;: leur écart fixe le facteur de croissance de la prévision. Sans elles, ×1,26 par défaut, et c'est signalé.</p>
+  </section>
+
+  <section class="sect">
+    <h2><span class="num">2</span>La photo</h2>
+    <label class="btn-photo" for="f-photo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.6"/></svg><span id="photo-lib">Prendre la photo</span>
+      <input type="file" id="f-photo" accept="image/*" capture="environment"></label>
+    <label class="btn-file" for="f-photo-gal" style="margin-top:10px;border-style:solid;border-color:var(--rule);font-weight:400;font-size:14px;color:var(--ink2)">ou choisir dans la galerie
+      <input type="file" id="f-photo-gal" accept="image/*"></label>
+    <div class="callout crit" id="avert-pixels" hidden style="margin-top:12px"></div>
+    <p class="note" id="photo-hint">Mètre ruban ou cadre visible, posé à plat sur la meule. Prise de vue au-dessus, appareil parallèle à la meule.</p>
+  </section>
+
+  <section class="sect" id="card-cal" hidden>
+    <h2><span class="num">3</span>L'échelle et la zone</h2>
+    <div class="stage"><canvas id="cv-cal"></canvas></div>
+    <div class="seg">
+      <button class="win" id="m-cal" type="button" aria-pressed="true">Échelle&nbsp;: 2 repères</button>
+      <button class="win" id="m-zone" type="button" aria-pressed="false">Zone&nbsp;: 2 coins</button>
+    </div>
+    <p class="note" id="mode-hint"></p>
+    <div class="ctrls">
+      <div style="flex:1;min-width:170px">
+        <label for="f-dist">Distance entre les 2 repères (cm)</label>
+        <input type="number" id="f-dist" min="1" step="0.5" inputmode="decimal">
+      </div>
+      <button class="win" id="btn-cadre" type="button">Cadre 40 cm</button>
+      <button class="win" id="btn-reset-cal" type="button">Effacer les points</button>
+      <button class="win" id="btn-reset-zone" type="button">Toute la photo</button>
+    </div>
+    <p class="note" id="cal-res"></p>
+  </section>
+
+  <section class="sect" id="card-run" hidden>
+    <h2><span class="num">4</span>Analyse</h2>
+    <button class="go" id="btn-run" type="button" disabled>Compter les champignons</button>
+    <p class="note" id="run-hint">Actif une fois l'échelle placée.</p>
+  </section>
+ </div>
+
+  <div id="results" hidden>
+    <div class="reshead">
+      <button class="retour" id="btn-retour" type="button" aria-label="Retour au relevé"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div style="min-width:0"><p class="kicker" id="res-ctx"></p><h1>Résultats</h1></div>
+    </div>
+    <section class="sect">
+      <h2>Ce que montre la photo</h2>
+      <div class="deltas" id="kpis"></div>
+      <div class="stage"><canvas id="cv-res"></canvas></div>
+      <p class="note" id="legend"></p>
+    </section>
+
+    <section class="sect">
+      <h2>Par classe de calibre</h2>
+      <div class="scroll"><table id="tbl-classes"></table></div>
+    </section>
+
+    <section class="sect">
+      <h2>Lecture</h2>
+      <div id="lecture"></div>
+    </section>
+
+    <section class="sect">
+      <h2>Prévision de cueille</h2>
+      <div id="prev"></div>
+    </section>
+
+    <section class="sect">
+      <h2><span class="num">5</span>Enregistrer</h2>
+      <button class="go" id="btn-save" type="button">Enregistrer ce relevé</button>
+      <p class="note" id="save-hint">Contrôlez d'abord les cercles sur la photo&nbsp;: un relevé validé à l'œil vaut mieux qu'un chiffre exact.</p>
+    </section>
+  </div>
+</div>
+
+<!-- ================= HISTORIQUE ================= -->
+<div class="pane" id="pane-hist" hidden>
+  <section class="sect">
+    <h2>Relevés enregistrés</h2>
+    <div class="grid" style="max-width:520px">
+      <div><label for="h-salle">Salle</label>
+        <select id="h-salle"><option value="">toutes</option></select></div>
+      <div><label for="h-depuis">Depuis le</label>
+        <input type="date" id="h-depuis"></div>
+    </div>
+    <div id="hist-empty" class="vide">Aucun relevé pour l'instant.<br><button type="button" id="btn-premier">Faire un premier relevé</button></div>
+    <div class="scroll"><table id="tbl-hist"></table></div>
+    <p class="note" id="hist-src"></p>
+  </section>
+
+  <section class="sect" id="card-detail" hidden>
+    <h2>Détail du relevé</h2>
+    <div id="detail"></div>
+    <div class="ctrls" style="margin-top:12px">
+      <button class="win" id="btn-del" type="button">Supprimer ce relevé</button>
+      <button class="win" id="btn-close-detail" type="button">Fermer</button>
+    </div>
+  </section>
+
+  <section class="sect">
+    <h2>Sortir les données</h2>
+    <div class="ctrls col">
+      <button class="win prim" id="btn-csv" type="button">Exporter en CSV</button>
+      <button class="win" id="btn-json" type="button">Sauvegarde complète (JSON)</button>
+      <button class="win" id="btn-share" type="button" hidden>Partager la sauvegarde</button>
+    </div>
+    <div class="sep"></div>
+    <p class="muted" style="font-weight:650;margin:0 0 8px">Reprendre une sauvegarde JSON — fusion par identifiant, rien n'est écrasé</p>
+    <label class="btn-file" for="f-import">Choisir un fichier .json<input type="file" id="f-import" accept=".json,application/json"></label>
+    <p class="note" id="import-hint">Le CSV s'ouvre dans Excel. Le JSON est le seul format qui garde les vignettes et les réglages&nbsp;: c'est lui qui regroupe plusieurs téléphones sur le PC.</p>
+  </section>
+</div>
+
+<!-- ================= RÉGLAGES ================= -->
+<div class="pane" id="pane-cfg" hidden>
+  <section class="sect" id="card-install">
+    <h2>Installer sur le téléphone</h2>
+    <div class="ctrls col"><button class="win prim" id="btn-install" type="button" hidden>Installer ChampisCompter</button></div>
+    <p class="note" id="install-hint"></p>
+  </section>
+
+  <section class="sect">
+    <h2>Cet appareil</h2>
+    <div class="grid">
+      <div class="span2"><label for="c-op">Nom par défaut</label><input type="text" id="c-op" placeholder="nom du releveur"></div>
+      <div><label for="c-dist">Distance d'échelle (cm)</label><input type="number" id="c-dist" step="0.5" min="1" inputmode="decimal"></div>
+      <div><label for="c-etageres">Nombre d'étagères</label><input type="number" id="c-etageres" min="1" max="20"></div>
+      <div class="span2"><label for="c-vignette">Côté de la vignette gardée (px)</label><input type="number" id="c-vignette" min="120" max="1200" step="20"></div>
+    </div>
+    <label for="c-salles">Salles — une par ligne, ou séparées par des virgules</label>
+    <textarea id="c-salles" rows="3"></textarea>
+    <label for="c-positions" style="margin-top:12px">Positions de sondage dans le volet</label>
+    <textarea id="c-positions" rows="2"></textarea>
+  </section>
+
+  <section class="sect">
+    <h2>Modèle de prévision</h2>
+    <div class="grid">
+      <div><label for="c-cible">Calibre cible (mm)</label><input type="number" id="c-cible" min="20" max="80"></div>
+      <div><label for="c-horizon">Horizon (jours)</label><input type="number" id="c-horizon" min="3" max="14"></div>
+      <div><label for="c-kgh">Cadence (kg/h)</label><input type="number" id="c-kgh" min="5" max="60"></div>
+      <div><label for="c-maxkg">Plafond (kg/m²/jour)</label><input type="number" id="c-maxkg" step="0.5" min="1" max="15"></div>
+      <div class="span2"><label for="c-poids">Coefficient de poids (g = k × Ø³)</label><input type="number" id="c-poids" step="0.000001"></div>
+      <div><label for="c-t20">Taux &gt; 20 mm</label><input type="number" id="c-t20" step="0.01" min="0" max="1"></div>
+      <div><label for="c-t15">Taux 15-20 mm</label><input type="number" id="c-t15" step="0.01" min="0" max="1"></div>
+      <div><label for="c-t10">Taux 10-15 mm</label><input type="number" id="c-t10" step="0.01" min="0" max="1"></div>
+    </div>
+    <p class="note">Après la pesée de 30 champignons et la saisie des kg réels par volet, ce sont ces quatre dernières cases qu'on recale. Le profil des jours, lui, ne dépend que de la mesure.</p>
+  </section>
+
+  <section class="sect">
+    <h2>Seuils de charge — sujets ≥ 10 mm par m²</h2>
+    <div class="grid">
+      <div><label for="c-d1">Sous-charge en dessous de</label><input type="number" id="c-d1"></div>
+      <div><label for="c-d2">Bas de cible</label><input type="number" id="c-d2"></div>
+      <div><label for="c-d3">Haut de cible</label><input type="number" id="c-d3"></div>
+      <div><label for="c-d4">Surcharge à partir de</label><input type="number" id="c-d4"></div>
+    </div>
+    <p class="note">Bornes déduites de 15 kg/m² à 27 g le sujet&nbsp;: ce ne sont pas encore une consigne, elles se recalent sur ≥ 10 volets.</p>
+  </section>
+
+  <section class="sect">
+    <h2>Enregistrer</h2>
+    <div class="ctrls col">
+      <button class="win prim" id="btn-cfg-save" type="button">Enregistrer les réglages</button>
+      <button class="win" id="btn-cfg-def" type="button">Revenir aux valeurs d'origine</button>
+    </div>
+    <p class="note" id="cfg-hint">Les réglages restent sur cet appareil. Sur un nouveau téléphone, il faut les ressaisir — ou reprendre une sauvegarde JSON, qui les contient.</p>
+    <div class="sep"></div>
+    <details class="fold"><summary>Ce que l'application ne fait pas</summary>
+      <ul class="notes">
+        <li>Comptage ±15-20 % par cadre&nbsp;: chapeaux jointifs manqués, granulés de gobetage clairs comptés en pins.</li>
+        <li>Échelle 5-10 % au mètre ruban — la perspective n'est pas corrigée. Moins de 2 % avec le cadre à plat.</li>
+        <li>Souche brune non validée&nbsp;: les seuils sont écrits, il manque les photos.</li>
+        <li>Fenêtre d'usage&nbsp;: du pinning à J2 de cueille. Au-delà, les chapeaux se recouvrent et le comptage sous-estime structurellement.</li>
+        <li>Le cadre bleu n'est pas détecté automatiquement&nbsp;: l'échelle se donne toujours à la main.</li>
+        <li>Le stockage est attaché à l'adresse de l'application et à ce navigateur&nbsp;: changer d'adresse, de navigateur ou effacer les données du site fait perdre l'historique. D'où l'export de fin de semaine.</li>
+        <li>Sur iPhone, Safari peut effacer les données d'un site non ouvert depuis plusieurs semaines&nbsp;: installer l'application sur l'écran d'accueil l'évite.</li>
+      </ul>
+    </details>
+  </section>
+</div>
+
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   0 · Réglages — modifiables depuis l'onglet Réglages,
+   et transportés par la sauvegarde JSON.
+   ===================================================================== */
+const DEFAUTS = {
+  operateur:"", distDefaut:20, etageres:6, vignette:520,
+  salles:["H1","H2","H3","H4","H5","H6","H7","H8","H9","H10","H11","H12","P1","P2","P3","P4","P5","P6"],
+  positions:["1 - entrée","2 - milieu","3 - fond"],
+  cible:45, horizon:7, kgParHeure:27, maxKgJour:5, coefPoids:0.000296,
+  t20:0.95, t15:0.85, t10:0.70,
+  d1:350, d2:450, d3:700, d4:850,
+  theme:""
+};
+let CFG = Object.assign({}, DEFAUTS);
+try{
+  const o = JSON.parse(localStorage.getItem("meules.cfg")||"{}");
+  CFG = Object.assign(CFG, o);
+}catch(e){}
+function cfgEcrit(){ try{ localStorage.setItem("meules.cfg", JSON.stringify(CFG)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const nb = (v,def) => { const x = parseFloat(v); return isFinite(x) ? x : def; };
+const fr = (v,d=1) => Number(v).toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+if(CFG.theme) document.documentElement.setAttribute("data-theme", CFG.theme);
+$("btn-theme").onclick = () => {
+  const dark = document.documentElement.getAttribute("data-theme")==="dark" ||
+    (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  CFG.theme = dark ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", CFG.theme); cfgEcrit();
+};
+
+/* =====================================================================
+   1 · Moteur de comptage — portage JS du moteur Python v1.0.0
+   seuillage clair/peu saturé -> ouverture -> bouchage de trous ->
+   transformée de distance -> germes -> partage des chapeaux jointifs
+   ===================================================================== */
+const CLASSES = [
+  {min:5,  max:9,   lib:"pins 5-9",  col:"#7BA9A7", clef:"c_5_9"},
+  {min:10, max:15,  lib:"10-15",     col:"#2B6A68", clef:"c_10_15"},
+  {min:16, max:20,  lib:"16-20",     col:"#5C7F52", clef:"c_16_20"},
+  {min:21, max:25,  lib:"21-25",     col:"#8E8C3E", clef:"c_21_25"},
+  {min:26, max:30,  lib:"26-30",     col:"#B08A1E", clef:"c_26_30"},
+  {min:31, max:35,  lib:"31-35",     col:"#C06A17", clef:"c_31_35"},
+  {min:36, max:40,  lib:"36-40",     col:"#A6412D", clef:"c_36_40"},
+  {min:41, max:45,  lib:"41-45",     col:"#7E2F33", clef:"c_41_45"},
+  {min:46, max:1e9, lib:"46+",       col:"#5A2A46", clef:"c_46_plus"}
+];
+const classeDe = d => { const k = Math.round(d); return CLASSES.find(c => k>=c.min && k<=c.max) || null; };
+
+function masque(px, w, h){
+  const m = new Uint8Array(w*h);
+  for(let i=0, p=0; i<w*h; i++, p+=4){
+    const r=px[p], g=px[p+1], b=px[p+2];
+    const mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+    const sat = mx>0 ? (mx-mn)/mx : 0;
+    let ok = mx>135 && sat<0.30;
+    if(ok && (r-b>45 && g-b>35)) ok=false;          // jaune : ruban
+    if(ok && (b-r>35 && sat>0.35)) ok=false;        // bleu : cadre, gants
+    m[i]=ok?1:0;
+  }
+  return m;
+}
+function ouverture(m,w,h){
+  const e=new Uint8Array(w*h), o=new Uint8Array(w*h);
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+    const i=y*w+x;
+    e[i] = (m[i]&&m[i-1]&&m[i+1]&&m[i-w]&&m[i+w]&&m[i-w-1]&&m[i-w+1]&&m[i+w-1]&&m[i+w+1])?1:0;
+  }
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+    const i=y*w+x;
+    o[i] = (e[i]||e[i-1]||e[i+1]||e[i-w]||e[i+w]||e[i-w-1]||e[i-w+1]||e[i+w-1]||e[i+w+1])?1:0;
+  }
+  return o;
+}
+function boucheTrous(m,w,h){
+  const fond=new Uint8Array(w*h); const pile=[];
+  const pousse=i=>{ if(!m[i]&&!fond[i]){fond[i]=1; pile.push(i);} };
+  for(let x=0;x<w;x++){pousse(x); pousse((h-1)*w+x);}
+  for(let y=0;y<h;y++){pousse(y*w); pousse(y*w+w-1);}
+  while(pile.length){
+    const i=pile.pop(), x=i%w, y=(i-x)/w;
+    if(x>0)pousse(i-1); if(x<w-1)pousse(i+1); if(y>0)pousse(i-w); if(y<h-1)pousse(i+w);
+  }
+  const out=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++) out[i] = (m[i]||!fond[i])?1:0;
+  return out;
+}
+function distance(m,w,h){           // chamfer 3-4, en unités de 1/3 px
+  const INF=1e9, d=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++) d[i]= m[i]?INF:0;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x; if(!m[i])continue; let v=d[i];
+    if(y>0){ v=Math.min(v,d[i-w]+3); if(x>0)v=Math.min(v,d[i-w-1]+4); if(x<w-1)v=Math.min(v,d[i-w+1]+4); }
+    if(x>0) v=Math.min(v,d[i-1]+3);
+    d[i]=v;
+  }
+  for(let y=h-1;y>=0;y--) for(let x=w-1;x>=0;x--){
+    const i=y*w+x; if(!m[i])continue; let v=d[i];
+    if(y<h-1){ v=Math.min(v,d[i+w]+3); if(x<w-1)v=Math.min(v,d[i+w+1]+4); if(x>0)v=Math.min(v,d[i+w-1]+4); }
+    if(x<w-1) v=Math.min(v,d[i+1]+3);
+    d[i]=v;
+  }
+  for(let i=0;i<w*h;i++) d[i]/=3;
+  return d;
+}
+function germes(d,w,h,dmin){
+  // seuls les maxima locaux (plateau compris) peuvent être des sommets de chapeau :
+  // sans ce filtre, un gros chapeau se voit découpé en une dizaine de faux sujets.
+  const ordre=[];
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+    const i=y*w+x, v=d[i]; if(v<=0.8) continue;
+    if(v>=d[i-1] && v>=d[i+1] && v>=d[i-w] && v>=d[i+w] &&
+       v>=d[i-w-1] && v>=d[i-w+1] && v>=d[i+w-1] && v>=d[i+w+1]) ordre.push(i);
+  }
+  ordre.sort((a,b)=>d[b]-d[a]);
+  const lab=new Int32Array(w*h); let n=0;
+  const cell=Math.max(2,Math.floor(dmin)), gw=Math.ceil(w/cell);
+  const grille=new Map();
+  for(const i of ordre){
+    const x=i%w, y=(i-x)/w, gx=(x/cell)|0, gy=(y/cell)|0;
+    let proche=false;
+    for(let a=-1;a<=1&&!proche;a++) for(let b=-1;b<=1&&!proche;b++){
+      const arr=grille.get((gy+a)*gw+(gx+b)); if(!arr)continue;
+      for(const j of arr){ const dx=x-(j%w), dy=y-((j-(j%w))/w);
+        if(dx*dx+dy*dy < dmin*dmin){proche=true;break;} }
+    }
+    if(proche) continue;
+    n++; lab[i]=n;
+    const k=gy*gw+gx; if(!grille.has(k)) grille.set(k,[]); grille.get(k).push(i);
+  }
+  return {lab,n};
+}
+function partage(d,m,lab,w,h){      // inondation par ordre de distance décroissante
+  let maxd=1; for(let i=0;i<d.length;i++) if(d[i]>maxd) maxd=d[i];
+  const nbs=64, seaux=Array.from({length:nbs},()=>[]);
+  const idx=v=>Math.min(nbs-1,Math.max(0,Math.floor((1-v/maxd)*(nbs-1))));
+  for(let i=0;i<w*h;i++) if(lab[i]>0) seaux[idx(d[i])].push(i);
+  for(let s=0;s<nbs;s++){
+    const q=seaux[s];
+    for(let k=0;k<q.length;k++){
+      const i=q[k], x=i%w, y=(i-x)/w, L=lab[i];
+      const vois=[];
+      if(x>0)vois.push(i-1); if(x<w-1)vois.push(i+1);
+      if(y>0)vois.push(i-w); if(y<h-1)vois.push(i+w);
+      for(const j of vois){
+        if(!m[j]||lab[j]!==0) continue;
+        lab[j]=L;
+        const t=idx(d[j]);
+        (t<=s?q:seaux[t]).push(j);
+      }
+    }
+  }
+  return lab;
+}
+function analyser(imgData, w, h, pxParMm){
+  let m = masque(imgData.data, w, h);
+  m = ouverture(m,w,h);
+  m = boucheTrous(m,w,h);
+  const d = distance(m,w,h);
+  const dmin = Math.max(2, 3.0*pxParMm);                   // 3 mm entre sommets
+  const g = germes(d,w,h,dmin);
+  const lab = partage(d,m,g.lab,w,h);
+  const aire=new Float64Array(g.n+1), sx=new Float64Array(g.n+1), sy=new Float64Array(g.n+1);
+  const x0=new Int32Array(g.n+1).fill(1e9), x1=new Int32Array(g.n+1).fill(-1);
+  const y0=new Int32Array(g.n+1).fill(1e9), y1=new Int32Array(g.n+1).fill(-1);
+  for(let i=0;i<w*h;i++){
+    const L=lab[i]; if(L<=0)continue;
+    const x=i%w, y=(i-x)/w;
+    aire[L]++; sx[L]+=x; sy[L]+=y;
+    if(x<x0[L])x0[L]=x; if(x>x1[L])x1[L]=x; if(y<y0[L])y0[L]=y; if(y>y1[L])y1[L]=y;
+  }
+  const out=[];
+  const aireMin = Math.PI*Math.pow(5*pxParMm/2,2);          // 5 mm mini
+  for(let L=1;L<=g.n;L++){
+    if(aire[L]<aireMin) continue;
+    const bw=x1[L]-x0[L]+1, bh=y1[L]-y0[L]+1;
+    const allong=Math.max(bw,bh)/Math.max(1,Math.min(bw,bh));
+    if(allong>2.2) continue;
+    if(aire[L]/(bw*bh) < 0.55) continue;
+    out.push({cx:sx[L]/aire[L], cy:sy[L]/aire[L], d:2*Math.sqrt(aire[L]/Math.PI)/pxParMm});
+  }
+  return out;
+}
+
+/* =====================================================================
+   2 · Prévision de récolte — portage de forecast.py
+   Croissance : doublement du poids en 24 h à bonne activité
+   (Mushroom Signals p.131-132) => diamètre × 2^(1/3) = ×1,26 par jour,
+   modulé par l'activité du compost (T compost − T air).
+   Poids : k × Ø(mm)³, calé sur 45 mm = 27 g (p.130).
+   ===================================================================== */
+const PREV = {
+  facteur(tc, ta){
+    if(tc==null || ta==null || isNaN(tc) || isNaN(ta))
+      return {g:1.26, txt:"facteur par défaut 1,26/jour — températures non renseignées", defaut:true};
+    const a = tc - ta;
+    if(a>=3   && tc>=22) return {g:1.30, txt:`activité ${fr(a,1)} °C, compost ${fr(tc,1)} °C — maturation précoce, sujets plus légers`};
+    if(a>=2   && tc>=20) return {g:1.26, txt:`activité ${fr(a,1)} °C, compost ${fr(tc,1)} °C — cible volée 1`};
+    if(a>=1.5 && tc>=19) return {g:1.22, txt:`activité ${fr(a,1)} °C, compost ${fr(tc,1)} °C — activité basse`};
+    return {g:1.18, txt:`activité ${fr(a,1)} °C, compost ${fr(tc,1)} °C — volée lente et étalée`};
+  },
+  poids(d){ return CFG.coefPoids*d*d*d; },
+  taux(d){ return d>=20 ? CFG.t20 : d>=15 ? CFG.t15 : d>=10 ? CFG.t10 : 0; },
+  calcule(det, surface, dateISO, tc, ta){
+    const f = this.facteur(tc, ta), C = CFG.cible, H = Math.round(CFG.horizon);
+    const j = Array.from({length:H+1}, (_,i)=>({jour:i, n:0, kg:0}));
+    let hors = 0;
+    det.forEach(o=>{
+      const d = o.d; if(Math.round(d) < 10) return;
+      const r = this.taux(d); if(!r) return;
+      const k = d>=C ? 0 : Math.ceil(Math.log(C/d)/Math.log(f.g));
+      if(k > H){ hors += r; return; }
+      j[k].n += r; j[k].kg += r*this.poids(Math.max(d,C))/1000;
+    });
+    const base = new Date(dateISO+"T12:00:00");
+    const profil = j.map(x=>({
+      jour: x.jour,
+      date: new Date(base.getTime()+x.jour*86400000).toISOString().slice(0,10),
+      sujets: Math.round(x.n/surface),
+      kg: Math.round(x.kg/surface*100)/100,
+      heures: Math.round(x.kg/surface*1000/CFG.kgParHeure*10)/10
+    }));
+    const total = profil.reduce((s,p)=>s+p.kg, 0);
+    const actifs = profil.filter(p=>p.kg>=0.3);
+    const pic = profil.reduce((a,b)=> b.kg>a.kg ? b : a, profil[0]);
+    return {facteur:f, profil, total:Math.round(total*100)/100, jours:actifs.length,
+      premier: actifs.length ? actifs[0].date : null,
+      pic: pic.kg>0 ? pic : null,
+      partPic: total>0 ? Math.round(pic.kg/total*100) : 0,
+      hors: Math.round(hors/surface)};
+  }
+};
+const jourCourt = iso => {
+  const d = new Date(iso+"T12:00:00");
+  return ["dim","lun","mar","mer","jeu","ven","sam"][d.getDay()] + " " +
+         String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
+};
+function rendPrevision(det, surface, dateISO, tc, ta){
+  const p = PREV.calcule(det, surface, dateISO, tc, ta);
+  const el = $("prev");
+  if(!p.premier){
+    el.innerHTML = `<p class="muted">Aucun sujet ≥ 10 mm&nbsp;: rien à récolter dans les ${CFG.horizon} jours.
+      La vague est encore en pins — c'est la réserve de la volée, pas la volée.</p>`;
+    return p;
+  }
+  const maxKg = Math.max.apply(null, p.profil.map(x=>x.kg)) || 1;
+  const lignes = p.profil.filter(x=>x.kg>0).map(x=>{
+    const alerte = x.kg > CFG.maxKgJour;
+    return `<tr>
+      <td>${jourCourt(x.date)}</td>
+      <td class="num">${x.sujets}</td>
+      <td class="num"${alerte?' style="color:var(--alert);font-weight:650"':''}>${fr(x.kg,2)}</td>
+      <td style="width:34%"><span style="display:block;height:8px;
+        background:${alerte?'var(--alert)':'var(--acc)'};width:${Math.max(3,x.kg/maxKg*100)}%"></span></td>
+      <td class="num">${fr(x.heures,0)}</td></tr>`;
+  }).join("");
+  const notes = [];
+  p.profil.forEach(x=>{ if(x.kg > CFG.maxKgJour) notes.push(
+    `${jourCourt(x.date)}&nbsp;: ${fr(x.kg,1)} kg/m² prévus, au-delà des ${CFG.maxKgJour} kg/m²/jour tenables en cueille manuelle (p.108). Renfort, ou cueille anticipée la veille.`); });
+  if(p.partPic >= 40) notes.push(
+    `${p.partPic} % de la volée sur le seul jour de pic&nbsp;: vague concentrée. Une volée 1 sur deux jours annonce une volée 2 également concentrée (p.139).`);
+  if(p.hors > 0) notes.push(
+    `${p.hors} sujets/m² n'atteindront pas ${CFG.cible} mm dans les ${CFG.horizon} jours&nbsp;: ils arriveront après la fenêtre affichée.`);
+  if(p.facteur.defaut) notes.push(
+    "Températures non saisies&nbsp;: le facteur ×1,26 est une hypothèse, pas une mesure. Deux relevés de sonde suffisent à la remplacer.");
+  notes.push("Tonnage indicatif tant que le coefficient de poids et les taux de réalisation ne sont pas recalés sur vos pesées réelles. Le profil des jours, lui, ne dépend que de la mesure.");
+  el.innerHTML = `
+    <div class="deltas">
+      <div><span class="dnum" style="color:var(--acc)">${jourCourt(p.premier).split(" ")[1]}</span><span class="dlab">premier jour de cueille</span></div>
+      <div><span class="dnum" style="color:var(--acc)">${p.pic ? jourCourt(p.pic.date).split(" ")[1] : "—"}</span><span class="dlab">jour de pic, ${p.partPic} % de la volée</span></div>
+      <div><span class="dnum">${fr(p.total,1)}</span><span class="dlab">kg/m² sur ${CFG.horizon} jours</span></div>
+      <div><span class="dnum">${p.jours}</span><span class="dlab">jours de cueille</span></div>
+    </div>
+    <div class="scroll"><table>
+      <caption>Profil jour par jour, ramené au m² de meule. Colonne « heures » : cueille de 1 000 m² à ${CFG.kgParHeure} kg/h.</caption>
+      <thead><tr><th>Jour</th><th class="num">Sujets/m²</th><th class="num">kg/m²</th><th></th><th class="num">Heures</th></tr></thead>
+      <tbody>${lignes}</tbody></table></div>
+    <p class="note">Croissance retenue&nbsp;: <b>×${fr(p.facteur.g,2)}</b> par jour — ${p.facteur.txt}. Calibre cible ${CFG.cible} mm.</p>
+    <ul class="notes">${notes.map(n=>`<li>${n}</li>`).join("")}</ul>`;
+  return p;
+}
+
+/* =====================================================================
+   3 · Stockage local — IndexedDB si le navigateur l'autorise,
+   localStorage sinon (Firefox refuse IndexedDB sur un fichier local).
+   Rien ne sort de l'appareil tant qu'on n'exporte pas.
+   ===================================================================== */
+const STORE = {
+  mode:"ls", db:null,
+  init(){
+    return new Promise(res=>{
+      let fini=false; const finir = m => { if(!fini){ fini=true; this.mode=m; res(m); } };
+      try{
+        if(!window.indexedDB) return finir("ls");
+        const rq = indexedDB.open("meules", 1);
+        rq.onupgradeneeded = e => {
+          const d = e.target.result;
+          if(!d.objectStoreNames.contains("releves")) d.createObjectStore("releves", {keyPath:"id"});
+        };
+        rq.onsuccess = e => { this.db = e.target.result; finir("idb"); };
+        rq.onerror = () => finir("ls");
+        rq.onblocked = () => finir("ls");
+        setTimeout(()=>finir(this.db?"idb":"ls"), 2500);
+      }catch(e){ finir("ls"); }
+    });
+  },
+  lsLire(){ try{ return JSON.parse(localStorage.getItem("meules.releves")||"[]"); }catch(e){ return []; } },
+  lsEcrire(a){
+    try{ localStorage.setItem("meules.releves", JSON.stringify(a)); return true; }
+    catch(e){
+      try{ localStorage.setItem("meules.releves", JSON.stringify(a.map(r=>Object.assign({},r,{vignette:null})))); return "sansPhoto"; }
+      catch(e2){ return false; }
+    }
+  },
+  tous(){
+    if(this.mode!=="idb") return Promise.resolve(this.lsLire());
+    return new Promise(res=>{
+      try{
+        const t = this.db.transaction("releves","readonly").objectStore("releves").getAll();
+        t.onsuccess = () => res(t.result||[]);
+        t.onerror = () => res([]);
+      }catch(e){ res([]); }
+    });
+  },
+  met(r){
+    if(this.mode!=="idb"){
+      const a = this.lsLire().filter(x=>x.id!==r.id); a.unshift(r);
+      return Promise.resolve(this.lsEcrire(a.slice(0,400)));
+    }
+    return new Promise(res=>{
+      try{
+        const t = this.db.transaction("releves","readwrite").objectStore("releves").put(r);
+        t.onsuccess = () => res(true); t.onerror = () => res(false);
+      }catch(e){ res(false); }
+    });
+  },
+  supprime(id){
+    if(this.mode!=="idb"){ return Promise.resolve(this.lsEcrire(this.lsLire().filter(x=>x.id!==id))); }
+    return new Promise(res=>{
+      try{
+        const t = this.db.transaction("releves","readwrite").objectStore("releves").delete(id);
+        t.onsuccess = () => res(true); t.onerror = () => res(false);
+      }catch(e){ res(false); }
+    });
+  }
+};
+
+/* =====================================================================
+   4 · Écran « nouveau relevé »
+   ===================================================================== */
+const S = {img:null, natW:0, natH:0, pts:[], coins:[], pxParCm:0, det:null, surface:0, mode:"cal"};
+
+function remplitListes(){
+  $("f-salle").innerHTML  = CFG.salles.map(s=>`<option>${esc(s)}</option>`).join("");
+  $("h-salle").innerHTML  = `<option value="">toutes</option>` + CFG.salles.map(s=>`<option>${esc(s)}</option>`).join("");
+  $("f-volet").innerHTML  = Array.from({length:Math.max(1,Math.round(CFG.etageres))},(_,i)=>`<option>${i+1}</option>`).join("");
+  $("f-pos").innerHTML    = CFG.positions.map((p,i)=>`<option${i===1?" selected":""}>${esc(p)}</option>`).join("");
+}
+remplitListes();
+$("f-date").value = new Date().toISOString().slice(0,10);
+$("f-op").value = CFG.operateur||"";
+$("f-dist").value = CFG.distDefaut;
+
+function onglet(n){
+  $("masthead").hidden = (n==="new" && !$("results").hidden);
+  [["new",$("pane-new")],["hist",$("pane-hist")],["cfg",$("pane-cfg")]].forEach(([k,el])=>{
+    el.hidden = k!==n;
+    $("tab-"+k).setAttribute("aria-selected", String(k===n));
+  });
+  if(n==="hist") chargeHistorique();
+  if(n==="cfg") remplitReglages();
+  scrollTo({top:0, behavior:"smooth"});
+}
+$("tab-new").onclick=()=>onglet("new");
+$("tab-hist").onclick=()=>onglet("hist");
+$("tab-cfg").onclick=()=>onglet("cfg");
+
+/* ---------- photo : lecture en data:URL, ce qui évite que le canvas
+     soit « teinté » quand la page est ouverte en fichier local ---------- */
+function chargePhoto(e){
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  montreSaisie();
+  $("photo-hint").textContent = "Lecture de la photo…";
+  S.pts=[]; S.coins=[]; S.det=null; $("results").hidden = true; $("avert-pixels").hidden = true;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      S.img = img; S.natW = img.naturalWidth; S.natH = img.naturalHeight;
+      $("card-cal").hidden = false; $("card-run").hidden = false;
+      S.mode = "cal"; majMode();
+      dessineCal();
+      $("photo-hint").textContent = `Photo chargée : ${S.natW} × ${S.natH} px.`;
+      $("photo-lib").textContent = "Reprendre la photo";
+      testePixels();
+      $("card-cal").scrollIntoView({behavior:"smooth", block:"start"});
+    };
+    img.onerror = () => { $("photo-hint").textContent = "Image illisible. Réessayez avec un JPEG."; };
+    img.src = fr.result;
+  };
+  fr.onerror = () => { $("photo-hint").textContent = "Lecture du fichier impossible."; };
+  fr.readAsDataURL(f);
+  e.target.value = "";
+}
+$("f-photo").onchange = chargePhoto;
+$("f-photo-gal").onchange = chargePhoto;
+function montreSaisie(){ $("saisie").hidden = false; $("results").hidden = true; $("masthead").hidden = false; }
+function montreResultats(){
+  $("saisie").hidden = true; $("masthead").hidden = true; $("results").hidden = false;
+  $("res-ctx").textContent = `${$("f-date").value} · ${$("f-salle").value} · étagère ${$("f-volet").value} · ${$("f-pos").value}`;
+  scrollTo({top:0});
+}
+
+/* le navigateur laisse-t-il lire les pixels ? on le vérifie tout de suite,
+   plutôt qu'après la minute d'analyse. */
+function testePixels(){
+  try{
+    const c = document.createElement("canvas"); c.width=2; c.height=2;
+    c.getContext("2d").drawImage(S.img,0,0,2,2);
+    c.getContext("2d").getImageData(0,0,2,2);
+    $("avert-pixels").hidden = true; return true;
+  }catch(err){
+    $("avert-pixels").hidden = false;
+    $("avert-pixels").innerHTML = "<p><b>Ce navigateur refuse de lire les pixels de la photo.</b> " +
+      "Le comptage ne pourra pas s'exécuter ici. Ouvrez le fichier dans Chrome ou Edge, " +
+      "ou déposez-le sur une adresse <code>https://</code> — le reste de l'application fonctionne.</p>";
+    return false;
+  }
+}
+
+/* ---------- échelle et zone : deux points chacune ---------- */
+const cvCal = $("cv-cal"), ctxCal = cvCal.getContext("2d");
+function majMode(){
+  $("m-cal").setAttribute("aria-pressed", String(S.mode==="cal"));
+  $("m-zone").setAttribute("aria-pressed", String(S.mode==="zone"));
+  $("mode-hint").innerHTML = S.mode==="cal"
+    ? "<b>Touchez deux repères</b> du mètre ruban, ou deux coins intérieurs du cadre, puis dites quelle distance les sépare."
+    : "<b>Touchez deux coins opposés</b> pour ne compter que l'intérieur du cadre. Sans zone, toute la photo est comptée — bords compris.";
+}
+$("m-cal").onclick = ()=>{ S.mode="cal"; majMode(); dessineCal(); };
+$("m-zone").onclick = ()=>{ S.mode="zone"; majMode(); dessineCal(); };
+
+function zoneCourante(){
+  if(S.coins.length<2) return {x:0, y:0, w:S.natW, h:S.natH, pleine:true};
+  const x0=Math.min(S.coins[0].x,S.coins[1].x), x1=Math.max(S.coins[0].x,S.coins[1].x);
+  const y0=Math.min(S.coins[0].y,S.coins[1].y), y1=Math.max(S.coins[0].y,S.coins[1].y);
+  return {x:Math.round(x0), y:Math.round(y0),
+          w:Math.max(20,Math.round(x1-x0)), h:Math.max(20,Math.round(y1-y0)), pleine:false};
+}
+function dessineCal(){
+  if(!S.img) return;
+  const W = Math.min(1100, S.natW), sc = W/S.natW;
+  cvCal.width = W; cvCal.height = Math.round(S.natH*sc);
+  ctxCal.drawImage(S.img, 0, 0, cvCal.width, cvCal.height);
+  const z = zoneCourante();
+  if(!z.pleine){
+    ctxCal.save();
+    ctxCal.fillStyle="rgba(27,33,27,.45)";
+    ctxCal.fillRect(0,0,cvCal.width,cvCal.height);
+    ctxCal.drawImage(S.img, z.x, z.y, z.w, z.h, z.x*sc, z.y*sc, z.w*sc, z.h*sc);
+    ctxCal.strokeStyle="#EDF0E9"; ctxCal.lineWidth=Math.max(2,W/400);
+    ctxCal.strokeRect(z.x*sc, z.y*sc, z.w*sc, z.h*sc);
+    ctxCal.restore();
+  }
+  ctxCal.lineWidth = Math.max(2, W/350); ctxCal.strokeStyle = "#2B6A68"; ctxCal.fillStyle = "#EDF0E9";
+  S.pts.forEach(p=>{
+    const x=p.x*sc, y=p.y*sc;
+    ctxCal.beginPath(); ctxCal.arc(x,y,11,0,7); ctxCal.stroke();
+    ctxCal.beginPath(); ctxCal.arc(x,y,3,0,7); ctxCal.fill();
+  });
+  if(S.pts.length===2){
+    ctxCal.beginPath(); ctxCal.moveTo(S.pts[0].x*sc,S.pts[0].y*sc);
+    ctxCal.lineTo(S.pts[1].x*sc,S.pts[1].y*sc); ctxCal.stroke();
+  }
+  majEchelle();
+}
+function pointDe(ev){
+  const r = cvCal.getBoundingClientRect();
+  const src = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+  return {x:(src.clientX-r.left)/r.width*S.natW, y:(src.clientY-r.top)/r.height*S.natH};
+}
+cvCal.addEventListener("click", ev => {
+  if(!S.img) return;
+  const p = pointDe(ev);
+  if(S.mode==="cal"){ if(S.pts.length>=2) S.pts=[]; S.pts.push(p); }
+  else { if(S.coins.length>=2) S.coins=[]; S.coins.push(p); }
+  dessineCal();
+});
+$("btn-reset-cal").onclick = ()=>{ S.pts=[]; S.mode="cal"; majMode(); dessineCal(); };
+$("btn-reset-zone").onclick = ()=>{ S.coins=[]; dessineCal(); };
+$("btn-cadre").onclick = ()=>{ $("f-dist").value = 40; majEchelle(); };
+$("f-dist").oninput = majEchelle;
+
+function majEchelle(){
+  const cm = parseFloat($("f-dist").value);
+  if(!S.img) return;
+  if(S.pts.length<2 || !cm || cm<=0){
+    S.pxParCm = 0;
+    $("cal-res").textContent = S.pts.length<2 ? "Deux repères d'échelle à placer." : "Distance à renseigner.";
+    $("btn-run").disabled = true; return;
+  }
+  const dx=S.pts[1].x-S.pts[0].x, dy=S.pts[1].y-S.pts[0].y;
+  S.pxParCm = Math.sqrt(dx*dx+dy*dy)/cm;
+  const z = zoneCourante();
+  S.surface = (z.w/S.pxParCm/100) * (z.h/S.pxParCm/100);
+  const petite = S.surface < 0.02;
+  $("cal-res").innerHTML = `Échelle <b>${fr(S.pxParCm,1)} px/cm</b> — zone ${fr(z.w/S.pxParCm,1)} × ${fr(z.h/S.pxParCm,1)} cm, soit <b>${fr(S.surface,4)} m²</b> comptés` +
+    (z.pleine ? " (toute la photo)." : " (zone délimitée).") +
+    (petite ? ` <span style="color:var(--alert)">Surface très petite&nbsp;: la densité au m² sera bruyante.</span>` : "");
+  $("btn-run").disabled = false;
+}
+
+/* ---------- analyse ---------- */
+$("btn-run").onclick = () => {
+  if(!S.pxParCm) return;
+  $("btn-run").disabled = true; $("run-hint").textContent = "Analyse en cours…";
+  setTimeout(lance, 30);
+};
+function lance(){
+  try{
+    const z = zoneCourante();
+    const ppmNat = S.pxParCm/10, cible = 4;                 // 4 px par mm suffisent
+    const sc = Math.min(1, cible/ppmNat);
+    const w = Math.max(60, Math.round(z.w*sc)), h = Math.max(60, Math.round(z.h*sc));
+    const c = document.createElement("canvas"); c.width=w; c.height=h;
+    const cx = c.getContext("2d", {willReadFrequently:true});
+    cx.drawImage(S.img, z.x, z.y, z.w, z.h, 0, 0, w, h);
+    const det = analyser(cx.getImageData(0,0,w,h), w, h, ppmNat*sc);
+    // retour en coordonnées de la photo d'origine : sans cela les cercles
+    // se décalent dès que la photo est plus fine que 40 px/cm.
+    S.det = det.map(o=>({cx: z.x + o.cx/sc, cy: z.y + o.cy/sc, d:o.d}));
+    rendu(S.det);
+    $("run-hint").textContent = `${S.det.length} sujets ≥ 5 mm détectés.`;
+    montreResultats();
+  }catch(e){
+    $("run-hint").innerHTML = `<span style="color:var(--alert)">Échec de l'analyse&nbsp;: ${esc(e.message)}</span>`;
+    testePixels();
+  }
+  $("btn-run").disabled = false;
+}
+function stats(det){
+  const s = S.surface||1;
+  const ds = det.map(o=>o.d).sort((a,b)=>a-b);
+  const sup10 = ds.filter(d=>Math.round(d)>=10);
+  const q10 = p => sup10.length? sup10[Math.min(sup10.length-1, Math.floor(p*sup10.length))] : 0;
+  const moy = a => a.length? a.reduce((x,y)=>x+y,0)/a.length : 0;
+  const cl = {}; CLASSES.forEach(c=>cl[c.lib]=0);
+  det.forEach(o=>{ const c=classeDe(o.d); if(c) cl[c.lib]++; });
+  const m = moy(sup10);
+  const sd = sup10.length>1 ? Math.sqrt(moy(sup10.map(d=>(d-m)*(d-m)))) : 0;
+  return {cl, surface:s, pins:cl["pins 5-9"], densPins:Math.round(cl["pins 5-9"]/s),
+    n10:sup10.length, dens10:Math.round(sup10.length/s), median:q10(0.5), p90:q10(0.9),
+    moyenne:m, max:ds.length?ds[ds.length-1]:0, cv:m>0?sd/m*100:0,
+    total:det.length, densTotal:Math.round(det.length/s)};
+}
+function charge(d){
+  if(d>=CFG.d4) return {k:"surcharge", c:"c"};
+  if(d>CFG.d3)  return {k:"haute", c:"w"};
+  if(d>=CFG.d2) return {k:"cible", c:"g"};
+  if(d>=CFG.d1) return {k:"basse", c:"w"};
+  return {k:"sous-charge", c:"c"};
+}
+function dessineResultat(cv, det, maxLargeur){
+  const cx = cv.getContext("2d");
+  const W = Math.min(maxLargeur, S.natW), sc = W/S.natW;
+  cv.width = W; cv.height = Math.round(S.natH*sc);
+  cx.drawImage(S.img, 0, 0, cv.width, cv.height);
+  const z = zoneCourante();
+  if(!z.pleine){
+    cx.strokeStyle="#EDF0E9"; cx.lineWidth=Math.max(1.5,W/500);
+    cx.strokeRect(z.x*sc, z.y*sc, z.w*sc, z.h*sc);
+  }
+  cx.lineWidth = Math.max(1.5, W/450);
+  det.forEach(o=>{
+    const c = classeDe(o.d); if(!c) return;
+    cx.strokeStyle = c.col; cx.beginPath();
+    cx.arc(o.cx*sc, o.cy*sc, (o.d*S.pxParCm/10/2)*sc, 0, 7); cx.stroke();
+  });
+  return sc;
+}
+function rendu(det){
+  const st = stats(det), ch = charge(st.dens10);
+  $("kpis").innerHTML = `
+    <div><span class="dnum">${st.dens10}</span><span class="dlab">sujets ≥ 10 mm par m²</span></div>
+    <div><span class="dnum">${st.densPins}</span><span class="dlab">pins 5-9 mm par m², la réserve</span></div>
+    <div><span class="dnum">${fr(st.median,1)}</span><span class="dlab">calibre médian, mm</span></div>
+    <div><span class="dnum">${fr(st.surface,3)}</span><span class="dlab">m² de meule comptés</span></div>`;
+  dessineResultat($("cv-res"), det, 1300);
+  $("legend").innerHTML = CLASSES.map(c=>
+    `<span style="white-space:nowrap;margin-right:14px;display:inline-block"><i class="sw" style="background:${c.col}"></i>${c.lib} mm</span>`).join("");
+  $("tbl-classes").innerHTML =
+    `<caption>Comptage brut et densité ramenée au m², sur ${fr(st.surface,3)} m² analysés.</caption>` +
+    `<thead><tr><th>Classe</th><th class="num">Sujets</th><th class="num">par m²</th></tr></thead><tbody>` +
+    CLASSES.map(c=>`<tr><td><i class="sw" style="background:${c.col}"></i>${c.lib} mm</td>
+      <td class="num">${st.cl[c.lib]}</td><td class="num">${Math.round(st.cl[c.lib]/st.surface)}</td></tr>`).join("") +
+    `<tr><td><b>Total ≥ 10 mm</b></td><td class="num"><b>${st.n10}</b></td><td class="num"><b>${st.dens10}</b></td></tr></tbody>`;
+  const notes = [];
+  if(ch.k==="surcharge") notes.push("Densité au-delà de "+CFG.d4+"/m²&nbsp;: les chapeaux vont se toucher. Pied long et voile par arrêt du flux d'air (Mushroom Signals p.110) — faire de la place en graze picking.");
+  if(ch.k==="sous-charge") notes.push("Sous "+CFG.d1+"/m²&nbsp;: volée courte. Vérifier l'évaporation au pinning — l'air pèse 60 % du nombre de primordia, la RH 30 %, le CO₂ 10 % (p.104).");
+  if(st.densPins > st.dens10*1.5) notes.push("Réserve de pins importante devant les sujets déjà formés&nbsp;: la vague suivante est déjà en place.");
+  if(st.cv>0 && st.cv<22) notes.push(`Calibres très homogènes (CV ${fr(st.cv,0)} %)&nbsp;: vague concentrée, prévoir la main d'œuvre en conséquence.`);
+  if(st.max>=35) notes.push("Sujets au-delà de 35 mm présents&nbsp;: la meule est en cueille, le comptage sous-estime — les chapeaux se recouvrent.");
+  if($("f-souche").value==="brun") notes.push("Souche brune&nbsp;: les seuils de couleur n'ont pas été validés sur du brun. Lire le comptage comme un ordre de grandeur.");
+  notes.push("Contrôlez les cercles sur la photo avant d'enregistrer&nbsp;: les granulés de gobetage clairs peuvent être comptés comme des pins.");
+  $("lecture").innerHTML =
+    `<p style="margin:0 0 .5rem"><span class="state ${ch.c}">charge ${ch.k}</span>
+     <span class="muted" style="margin-left:10px">${st.total} sujets ≥ 5 mm · ${st.densTotal}/m² · P90 ${fr(st.p90,1)} mm</span></p>
+     <ul class="notes">${notes.map(n=>`<li>${n}</li>`).join("")}</ul>`;
+  rendPrevision(det, st.surface, $("f-date").value,
+                parseFloat($("f-tc").value), parseFloat($("f-ta").value));
+}
+
+/* ---------- vignette annotée, gardée avec le relevé ---------- */
+function vignette(){
+  try{
+    const cote = Math.max(120, Math.round(CFG.vignette));
+    const tmp = document.createElement("canvas");
+    dessineResultat(tmp, S.det, Math.min(cote, S.natW));
+    return tmp.toDataURL("image/jpeg", 0.72);
+  }catch(e){ return null; }
+}
+
+/* ---------- enregistrement ---------- */
+$("btn-save").onclick = async () => {
+  if(!S.det) return;
+  const b = $("btn-save"); b.disabled = true; b.textContent = "Enregistrement…";
+  try{
+    const st = stats(S.det), ch = charge(st.dens10), z = zoneCourante();
+    const p = PREV.calcule(S.det, st.surface, $("f-date").value,
+                           parseFloat($("f-tc").value), parseFloat($("f-ta").value));
+    const cl = {}; CLASSES.forEach(c=>cl[c.clef]=st.cl[c.lib]);
+    const id = `${$("f-date").value}_${$("f-salle").value}_E${$("f-volet").value}_P${$("f-pos").value[0]}_${Date.now()%1000000}`;
+    const rec = Object.assign({
+      id, date:$("f-date").value, salle:$("f-salle").value, etagere:+$("f-volet").value,
+      position:$("f-pos").value, volee:+$("f-volee").value, souche:$("f-souche").value,
+      operateur:$("f-op").value||"",
+      tCompost: parseFloat($("f-tc").value)||null, tAir: parseFloat($("f-ta").value)||null,
+      pxParCm:+S.pxParCm.toFixed(2), surface_m2:+st.surface.toFixed(4),
+      zone: z.pleine ? "photo entière" : `${z.w}×${z.h} px`,
+      total:st.total, n10:st.n10, dens10:st.dens10, pins:st.pins, densPins:st.densPins,
+      median:+st.median.toFixed(1), p90:+st.p90.toFixed(1), cv:+st.cv.toFixed(1),
+      charge:ch.k,
+      prevKgM2:p.total, prevPremierJour:p.premier, prevJourDePic:p.pic?p.pic.date:null,
+      prevNbJours:p.jours, partJourDePic:p.partPic, facteurCroissance:p.facteur.g,
+      cree:new Date().toISOString(), moteur:"champiscompter-2.1.0",
+      vignette: vignette()
+    }, cl);
+    const ok = await STORE.met(rec);
+    CFG.operateur = $("f-op").value||""; cfgEcrit();
+    b.textContent = ok ? "Enregistré ✓" : "Échec ✗";
+    $("save-hint").textContent = ok === "sansPhoto"
+      ? "Relevé gardé sur cet appareil, mais la mémoire est pleine : les vignettes ont été retirées. Exportez et videz l'historique."
+      : ok ? "Relevé gardé sur cet appareil. Il apparaît dans l'historique ; pensez à exporter en fin de semaine."
+           : "La mémoire du navigateur a refusé l'écriture. Exportez l'historique, puis supprimez d'anciens relevés.";
+    majEtat();
+  }catch(e){
+    $("save-hint").textContent = "Échec : " + e.message;
+  }
+  setTimeout(()=>{ b.disabled=false; b.textContent="Enregistrer ce relevé"; }, 2200);
+};
+
+/* =====================================================================
+   5 · Historique
+   ===================================================================== */
+let HIST = [];
+async function majEtat(){
+  const a = await STORE.tous();
+  $("etat").innerHTML = a.length
+    ? `<b>${a.length} relevé${a.length>1?"s":""}</b> sur cet appareil · stockage local, aucun envoi · exportez en fin de semaine.`
+    : `Aucun relevé enregistré pour l'instant. Tout est gardé sur cet appareil&nbsp;: rien n'est envoyé.`;
+}
+function filtre(a){
+  const s = $("h-salle").value, d = $("h-depuis").value;
+  return a.filter(r => (!s || r.salle===s) && (!d || (r.date||"") >= d));
+}
+async function chargeHistorique(){
+  HIST = (await STORE.tous()).sort((x,y)=> (y.date+y.cree||"").localeCompare(x.date+x.cree||""));
+  const vus = filtre(HIST);
+  const t = $("tbl-hist");
+  $("hist-empty").hidden = vus.length>0;
+  $("hist-src").textContent = "Stockage : " + (STORE.mode==="idb" ? "base locale du navigateur" : "mémoire locale du navigateur, mode restreint") +
+    ` · ${HIST.length} relevé(s) au total.`;
+  if(!vus.length){ t.innerHTML=""; return; }
+  t.innerHTML = `<thead><tr><th>Date</th><th>Salle</th><th class="num">Ét.</th><th class="pos">Pos.</th>
+    <th class="num">≥10/m²</th><th class="num">Médian</th><th>Charge</th></tr></thead><tbody>` +
+    vus.map(r=>`<tr class="click" data-id="${esc(r.id)}"><td class="num">${esc(String(r.date||"").slice(8,10)+"/"+String(r.date||"").slice(5,7))}</td><td>${esc(r.salle)}</td>
+      <td class="num">${r.etagere==null?"":r.etagere}</td><td class="pos">${esc(String(r.position||"").slice(0,1))}</td>
+      <td class="num">${r.dens10==null?"":r.dens10}</td><td class="num">${r.median==null?"":fr(r.median,1)}</td>
+      <td><span class="state ${charge(r.dens10||0).c}">${esc(r.charge)}</span></td></tr>`).join("") + `</tbody>`;
+  t.querySelectorAll("tr.click").forEach(tr=>{
+    tr.onclick = () => montreDetail(tr.getAttribute("data-id"));
+  });
+}
+$("h-salle").onchange = chargeHistorique;
+$("h-depuis").onchange = chargeHistorique;
+
+let detailId = null;
+function montreDetail(id){
+  const r = HIST.find(x=>x.id===id); if(!r) return;
+  detailId = id;
+  const ch = charge(r.dens10||0);
+  const lignes = CLASSES.map(c=>{
+    const n = r[c.clef]||0;
+    return `<tr><td><i class="sw" style="background:${c.col}"></i>${c.lib} mm</td>
+      <td class="num">${n}</td><td class="num">${r.surface_m2?Math.round(n/r.surface_m2):""}</td></tr>`;
+  }).join("");
+  $("detail").innerHTML = `
+    <p style="margin:0 0 .4rem"><b>${esc(r.date)} · ${esc(r.salle)} · étagère ${r.etagere} · ${esc(r.position)}</b>
+      <span class="state ${ch.c}" style="margin-left:10px">charge ${esc(r.charge)}</span></p>
+    <div class="deltas">
+      <div><span class="dnum">${r.dens10}</span><span class="dlab">≥ 10 mm par m²</span></div>
+      <div><span class="dnum">${r.densPins}</span><span class="dlab">pins par m²</span></div>
+      <div><span class="dnum">${fr(r.median,1)}</span><span class="dlab">calibre médian, mm</span></div>
+      <div><span class="dnum">${r.prevKgM2==null?"—":fr(r.prevKgM2,1)}</span><span class="dlab">kg/m² prévus</span></div>
+    </div>
+    ${r.vignette ? `<div class="stage"><img src="${r.vignette}" alt="photo annotée"></div>` : `<p class="muted">Vignette non conservée.</p>`}
+    <div class="scroll"><table>
+      <thead><tr><th>Classe</th><th class="num">Sujets</th><th class="num">par m²</th></tr></thead>
+      <tbody>${lignes}</tbody></table></div>
+    <ul class="notes">
+      <li>Volée ${r.volee} · souche ${esc(r.souche||"blanc")} · relevé par ${esc(r.operateur||"—")}</li>
+      <li>Échelle ${fr(r.pxParCm,1)} px/cm sur ${fr(r.surface_m2,4)} m² (${esc(r.zone||"photo entière")}) · T° compost ${r.tCompost==null?"—":r.tCompost} / air ${r.tAir==null?"—":r.tAir}</li>
+      <li>Prévision&nbsp;: premier jour ${r.prevPremierJour||"—"}, pic ${r.prevJourDePic||"—"}, ${r.partJourDePic||0} % au pic, facteur ×${fr(r.facteurCroissance,2)}</li>
+    </ul>`;
+  $("card-detail").hidden = false;
+  $("card-detail").scrollIntoView({behavior:"smooth", block:"start"});
+}
+$("btn-premier").onclick = ()=>onglet("new");
+$("btn-retour").onclick = ()=>{ montreSaisie(); $("card-run").scrollIntoView({block:"start"}); };
+$("btn-close-detail").onclick = ()=>{ $("card-detail").hidden = true; detailId=null; };
+$("btn-del").onclick = async ()=>{
+  if(!detailId) return;
+  if(!confirm("Supprimer définitivement ce relevé de cet appareil ?")) return;
+  await STORE.supprime(detailId);
+  $("card-detail").hidden = true; detailId=null;
+  await chargeHistorique(); majEtat();
+};
+
+/* ---------- exports ---------- */
+const COLS = ["id","date","salle","etagere","position","volee","souche","operateur",
+  "tCompost","tAir","surface_m2","pxParCm","zone","total","pins","densPins","n10","dens10",
+  "median","p90","cv","charge","prevKgM2","prevPremierJour","prevJourDePic","prevNbJours",
+  "partJourDePic","facteurCroissance","cree","moteur"].concat(CLASSES.map(c=>c.clef));
+
+function telecharge(nom, contenu, type){
+  const b = new Blob([contenu], {type});
+  const url = URL.createObjectURL(b);
+  const a = document.createElement("a");
+  a.href = url; a.download = nom;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+$("btn-csv").onclick = () => {
+  const a = filtre(HIST);
+  if(!a.length){ $("import-hint").textContent = "Rien à exporter."; return; }
+  const lignes = [COLS.join(";")].concat(a.map(r=>COLS.map(c=>{
+    const v = r[c]; return v===undefined||v===null ? "" : String(v).replace(/[;\r\n]/g," ");
+  }).join(";")));
+  telecharge("champiscompter-"+new Date().toISOString().slice(0,10)+".csv",
+    "﻿"+lignes.join("\r\n"), "text/csv;charset=utf-8");
+  $("import-hint").textContent = a.length+" relevé(s) exportés en CSV.";
+};
+function sauvegarde(){
+  return JSON.stringify({format:"champiscompter", version:2,
+    exporte:new Date().toISOString(), reglages:CFG, releves:HIST}, null, 1);
+}
+$("btn-json").onclick = () => {
+  if(!HIST.length){ $("import-hint").textContent = "Rien à sauvegarder."; return; }
+  telecharge("champiscompter-sauvegarde-"+new Date().toISOString().slice(0,10)+".json",
+    sauvegarde(), "application/json");
+  $("import-hint").textContent = HIST.length+" relevé(s) et les réglages sont dans le fichier.";
+};
+if(navigator.canShare){
+  $("btn-share").hidden = false;
+  $("btn-share").onclick = async () => {
+    try{
+      const f = new File([sauvegarde()], "champiscompter-sauvegarde.json", {type:"application/json"});
+      if(navigator.canShare({files:[f]})) await navigator.share({files:[f], title:"ChampisCompter — relevés"});
+      else await navigator.share({title:"ChampisCompter — relevés", text:sauvegarde().slice(0,2000)});
+    }catch(e){}
+  };
+}
+$("f-import").onchange = e => {
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = async () => {
+    try{
+      const o = JSON.parse(fr.result);
+      const arr = Array.isArray(o) ? o : (o.releves||[]);
+      if(!arr.length) throw new Error("aucun relevé dans ce fichier");
+      const connus = new Set((await STORE.tous()).map(r=>r.id));
+      let n=0;
+      for(const r of arr){ if(r && r.id && !connus.has(r.id)){ await STORE.met(r); n++; } }
+      if(o.reglages && confirm("Reprendre aussi les réglages de cette sauvegarde ?")){
+        CFG = Object.assign({}, DEFAUTS, o.reglages, {theme:CFG.theme}); cfgEcrit(); remplitListes(); remplitReglages();
+      }
+      $("import-hint").textContent = `${n} relevé(s) ajouté(s), ${arr.length-n} déjà présent(s).`;
+      await chargeHistorique(); majEtat();
+    }catch(err){
+      $("import-hint").textContent = "Fichier illisible : " + err.message;
+    }
+    e.target.value = "";
+  };
+  fr.readAsText(f);
+};
+
+/* =====================================================================
+   6 · Réglages
+   ===================================================================== */
+function remplitReglages(){
+  $("c-op").value = CFG.operateur; $("c-dist").value = CFG.distDefaut;
+  $("c-etageres").value = CFG.etageres; $("c-vignette").value = CFG.vignette;
+  $("c-salles").value = CFG.salles.join(", ");
+  $("c-positions").value = CFG.positions.join(", ");
+  $("c-cible").value = CFG.cible; $("c-horizon").value = CFG.horizon;
+  $("c-kgh").value = CFG.kgParHeure; $("c-maxkg").value = CFG.maxKgJour;
+  $("c-poids").value = CFG.coefPoids;
+  $("c-t20").value = CFG.t20; $("c-t15").value = CFG.t15; $("c-t10").value = CFG.t10;
+  $("c-d1").value = CFG.d1; $("c-d2").value = CFG.d2; $("c-d3").value = CFG.d3; $("c-d4").value = CFG.d4;
+}
+const listeDe = v => v.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+$("btn-cfg-save").onclick = () => {
+  const salles = listeDe($("c-salles").value), positions = listeDe($("c-positions").value);
+  CFG.operateur = $("c-op").value.trim();
+  CFG.distDefaut = nb($("c-dist").value, DEFAUTS.distDefaut);
+  CFG.etageres = Math.max(1, Math.round(nb($("c-etageres").value, DEFAUTS.etageres)));
+  CFG.vignette = Math.max(120, Math.round(nb($("c-vignette").value, DEFAUTS.vignette)));
+  CFG.salles = salles.length ? salles : DEFAUTS.salles;
+  CFG.positions = positions.length ? positions : DEFAUTS.positions;
+  CFG.cible = nb($("c-cible").value, DEFAUTS.cible);
+  CFG.horizon = Math.max(3, Math.round(nb($("c-horizon").value, DEFAUTS.horizon)));
+  CFG.kgParHeure = nb($("c-kgh").value, DEFAUTS.kgParHeure);
+  CFG.maxKgJour = nb($("c-maxkg").value, DEFAUTS.maxKgJour);
+  CFG.coefPoids = nb($("c-poids").value, DEFAUTS.coefPoids);
+  CFG.t20 = nb($("c-t20").value, DEFAUTS.t20);
+  CFG.t15 = nb($("c-t15").value, DEFAUTS.t15);
+  CFG.t10 = nb($("c-t10").value, DEFAUTS.t10);
+  CFG.d1 = nb($("c-d1").value, DEFAUTS.d1); CFG.d2 = nb($("c-d2").value, DEFAUTS.d2);
+  CFG.d3 = nb($("c-d3").value, DEFAUTS.d3); CFG.d4 = nb($("c-d4").value, DEFAUTS.d4);
+  cfgEcrit(); remplitListes();
+  $("f-op").value = CFG.operateur; $("f-dist").value = CFG.distDefaut;
+  $("cfg-hint").textContent = "Réglages enregistrés sur cet appareil à " +
+    new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) + ".";
+};
+$("btn-cfg-def").onclick = () => {
+  if(!confirm("Revenir aux valeurs d'origine ? Les relevés ne sont pas touchés.")) return;
+  const t = CFG.theme; CFG = Object.assign({}, DEFAUTS, {theme:t});
+  cfgEcrit(); remplitListes(); remplitReglages();
+  $("cfg-hint").textContent = "Valeurs d'origine rétablies.";
+};
+
+/* =====================================================================
+   7 · Démarrage
+   ===================================================================== */
+/* ---------- application installable, hors-ligne ---------- */
+const autonome = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+let invite = null;
+function majInstall(){
+  const h = $("install-hint");
+  if(autonome){ h.innerHTML = "<b>Application installée.</b> Elle s'ouvre depuis l'écran d'accueil et fonctionne sans réseau, y compris dans les salles."; return; }
+  if(invite){ $("btn-install").hidden = false; h.textContent = "Ajoute l'icône sur l'écran d'accueil : ouverture plein écran, fonctionnement hors-ligne."; return; }
+  h.innerHTML = ios
+    ? "Dans <b>Safari</b> : touchez le bouton <b>Partager</b> (carré avec une flèche), puis <b>Sur l'écran d'accueil</b>. L'application s'ouvre ensuite plein écran et fonctionne sans réseau."
+    : "Dans <b>Chrome</b> : menu <b>⋮</b>, puis <b>Installer l'application</b> (ou « Ajouter à l'écran d'accueil »). L'application s'ouvre ensuite plein écran et fonctionne sans réseau.";
+}
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); invite = e; majInstall(); });
+addEventListener("appinstalled", () => { invite = null; $("btn-install").hidden = true;
+  $("install-hint").innerHTML = "<b>Installée.</b> Ouvrez-la depuis l'écran d'accueil."; });
+$("btn-install").onclick = async () => { if(!invite) return; invite.prompt(); try{ await invite.userChoice; }catch(e){} invite = null; $("btn-install").hidden = true; };
+majInstall();
+if("serviceWorker" in navigator && location.protocol !== "file:"){
+  navigator.serviceWorker.register("sw.js").then(reg => {
+    const propose = w => { $("maj").hidden = false; $("btn-maj").onclick = () => w.postMessage("activer"); };
+    if(reg.waiting && navigator.serviceWorker.controller) propose(reg.waiting);
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing; if(!w) return;
+      w.addEventListener("statechange", () => { if(w.state==="installed" && navigator.serviceWorker.controller) propose(w); });
+    });
+  }).catch(()=>{});
+  let recharge = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if(!recharge){ recharge = true; location.reload(); } });
+}
+// demander au navigateur de ne pas effacer l'historique en cas de manque de place
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+
+(async function(){
+  await STORE.init();
+  await majEtat();
+  majMode();
+})();
+</script>
+</body>
+</html>
